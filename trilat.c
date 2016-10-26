@@ -31,40 +31,70 @@ Line line_create(float x0, float y0, float x1, float y1){
 			.p1 = (Point) {.x = x1, .y = y1}
 		};
 }
-float get_opp_angle(float d0, float d1, float d2){
+Line line_create(Point p0, Point p1){
+	return (Line) { .p0 = p0, .p1 = p1 };
+}
+float get_opp_angle(float a, float b, float c){
 	return acos(
-		(pow(d0, 2) + pow(d1, 2) - pow(d2, 2))
-		/ (2*d0*d1)
+		(pow(a, 2) + pow(c, 2) - pow(b, 2))
+		/ (2*a*c)
 		);
 }
 
-Point point_trilat(Line l0, Line l1, Line l2){
-	float d0 = line_dist(l0);
-	float d1 = line_dist(l1);
-	float d2 = line_dist(l2);
+float get_offset_angle(float a, Line bc){
+	return acos(bc.p1.x/a);
+}
 
-	float angle = get_opp_angle(d0, d1, d2);
+Point point_trilat(float b, float c, Line bc){
+	float a = line_dist(bc);
+
+	float angle = get_opp_angle(a, b, c);
+	printf("angle abc:");
+	print_angle(angle);
+	angle += get_offset_angle(a, bc);
+	printf("\noffset of C:");
+	print_angle(get_offset(a, bc));
+	printf("\n");
 	return (Point) {
-		.x = l1.p0.x + d0 * cos(angle),
-		.y = l1.p0.y + d0 * sin(angle)
+		.x = bc.p0.x + c * cos(angle),
+		.y = bc.p0.y + c * sin(angle)
 		};
 }
 
 int main( ){
-	Line l0 = line_create(1, 1, 0, 0);
-	Line l1 = line_create(0, 0, 1, 0);
-	Line l2 = line_create(1, 0, 1, 1);
+	Point A = { .x = 1, .y = 1};
+	Point B = { .x = 0, .y = 0};
+	Point C = { .x = 1, .y = 0};
 
-	Point p0 = point_trilat(l0, l1, l2);
-	Point p1 = point_trilat(l1, l2, l0);
-	Point p2 = point_trilat(l2, l0, l1);
+	Line ab = line_create(A, B);
+	Line bc = line_create(B, A);
+	Line ca = line_create(C, A);
 
-	print_point(p0);
-	printf("\n");
-	print_point(p1);
-	printf("\n");
-	print_point(p2);
-	printf("\n");
-	
+	float a = line_dist(bc);
+	float b = line_dist(ca);
+	float c = line_dist(ab);
+
+	printf("Triangle with points:\nA:(");
+	print_point(A);
+	printf("), B:(");
+	print_point(B);
+	printf("), C:(");
+	print_point(C);
+	printf(")\nsides:\na:%f, b:%f, c:%f\n"
+		a, b, c);
+
+	Point A_ = point_trilat(b, c, bc);
+	printf("A:(");
+	print_point(A_);
+	printf(")\n");
+	Point B_ = point_trilat(c, a, ca);
+	printf("B:(");
+	print_point(B_);
+	printf(")\n");
+	Point C_ = point_trilat(a, b, ab);
+	printf_("C:(");
+	print_point(C_);
+	printf(")\n");
+
 	return 0;
 }
