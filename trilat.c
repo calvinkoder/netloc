@@ -50,32 +50,38 @@ float get_offset_angle(float a, Point C_){
 	}
 	return angle;
 }
-
-Point point_trilat(float b, float c, Point B, Point C){
+float get_trilat_angle(float b, float c, Point B, Point C){
+	
 	float a = dist(B, C);
-
 	printf("sides: %f, %f, %f\n", a, b, c);
-
 	Point C_ = { .x = C.x - B.x, .y = C.y - B.y };
 	printf("C_:");
 	print_point(C_);	
 	float ABC = get_opp_angle(a, b, c);
 	printf("\nangles:\nABC:");
 	print_angle(ABC);	
-
 	float C_B_C__ = get_offset_angle(a, C_);
 	printf("\nC_B_C__:");
 	print_angle(C_B_C__);
-
 	float A_B_C__ = ABC + C_B_C__;
 	printf("\nA_B_C__:");
 	print_angle(A_B_C__);
-	printf("\n");	
-	
-	return (Point) {
+	printf("\n");
+	return A_B_C__;
+}
+Point* points_trilat(float b, float c, Point B, Point C){
+	float A_B_C__ = angle_trilat(b, c, B, C);
+	Point* points = (Point*) malloc(2);
+
+	points[0] = (Point){
 		.x = B.x + c * cos(A_B_C__),
 		.y = B.y + c * sin(A_B_C__)
-		};
+	}
+	points[1] = (Point){
+		.x = B.x + c * cos(-A_B_C__),
+		.y = B.y + c * sin(-A_B_C__)
+	}
+	return points
 }
 
 int main( ){
@@ -96,9 +102,10 @@ int main( ){
 	printf(")\nsides:\na:%f, b:%f, c:%f\n",
 		a, b, c);
 	printf("-----------------\npoint A estimate:\n");
-	Point A_ = point_trilat(b, c, B, C);
+	Point* A__ = point_trilat(b, c, B, C);
 	printf("A:(");
-	print_point(A_);
+	print_point(A_[0]);
+	print_point(A_[1]);
 	printf(")\n----------------\npoint B estimate:\n");
 	Point B_ = point_trilat(c, a, C, A);
 	printf("B:(");
