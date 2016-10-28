@@ -1,9 +1,11 @@
+#include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
 #include <string.h>
 #include <float.h>
 
 const float M_TAU = M_PI*2;
+const float CIRCLE_STEP = 0.1; 
 
 int nearly_equal(float a, float b, float epsilon){
 	float diff = fabs(a - b);
@@ -17,6 +19,14 @@ int nearly_equal(float a, float b, float epsilon){
 		return diff / fmin(fabs(a) + fabs(b), FLT_MAX) < epsilon;
 	}
 }
+unsigned int n_chose_k(unsigned int n, unsigned int k){
+	unsigned int res = 1;	
+	for (int i = n; i < k; --i){
+		res *= n;
+	} 
+	return res; 
+}
+
 typedef struct Point{float x; float y;} Point;
 
 void print_angle(float a){
@@ -31,90 +41,121 @@ float dist(Point A, Point B){
 	return sqrt(pow(B.x - A.x, 2) + pow(B.y - A.y, 2));
 }
 
-float get_opp_angle(float a, float b, float c){
+float angle_opp(float a, float b, float c){
 	return acos(
-			(pow(a, 2) + pow(c, 2) - pow(b, 2))
-			/ 
-			(2*a*c)
-		);
+		(pow(a, 2) + pow(c, 2) - pow(b, 2))
+		/ 
+		(2*a*c)
+	);
 }
 
-float get_offset_angle(float a, Point C_){
+float angle_offset(float a, Point C_){
 	float angle = acos(C_.x/a);
-	printf("\noffset angle:");
-	print_angle(angle);
-	printf("\na*sin(angle): %f, C_.y: %f", a*sin(angle), C_.y);
 	if ( !nearly_equal(a*sin(angle), C_.y, FLT_EPSILON) ){
-		printf("\nnot equal");	
 		angle += M_TAU / 4;
 	}
 	return angle;
 }
-float get_trilat_angle(float b, float c, Point B, Point C){
-	
+float angle_trilat(float b, float c, Point B, Point C){
 	float a = dist(B, C);
-	printf("sides: %f, %f, %f\n", a, b, c);
+	
 	Point C_ = { .x = C.x - B.x, .y = C.y - B.y };
-	printf("C_:");
-	print_point(C_);	
-	float ABC = get_opp_angle(a, b, c);
-	printf("\nangles:\nABC:");
-	print_angle(ABC);	
-	float C_B_C__ = get_offset_angle(a, C_);
-	printf("\nC_B_C__:");
-	print_angle(C_B_C__);
+	float ABC = angle_opp(a, b, c);
+	float C_B_C__ = angle_offset(a, C_);
 	float A_B_C__ = ABC + C_B_C__;
-	printf("\nA_B_C__:");
-	print_angle(A_B_C__);
-	printf("\n");
+
 	return A_B_C__;
 }
-Point* points_trilat(float b, float c, Point B, Point C){
-	float A_B_C__ = angle_trilat(b, c, B, C);
-	Point* points = (Point*) malloc(2);
+void points_unilat(Point* points, size_t* points_size, 
+	float* dist, Point* source, float step){
 
-	points[0] = (Point){
-		.x = B.x + c * cos(A_B_C__),
-		.y = B.y + c * sin(A_B_C__)
+	*points_size = M_TAU / step;	
+	points = (Point*) malloc(*points_size * sizeof(Point));	
+	for ( int i = 0; i < *points_size; ++i){
+		*(points+i) = (Point){
+			.x = (*source).x + *dist * cos(i*step),
+			.y = (*source).y + *dist * sin(i*step)
+		};
 	}
-	points[1] = (Point){
-		.x = B.x + c * cos(-A_B_C__),
-		.y = B.y + c * sin(-A_B_C__)
-	}
-	return points
+} 
+void points_duolat(Point* points, size_t* points_size, 
+	float* dists, Point* source_points){
+
+	float A_B_C__ = angle_trilat(*dists, *(dists+1), *source_points, *(source_points+1));
+	
+	points = (Point*) malloc(2 * sizeof(Point));
+	*points = (Point){
+		.x = (*source_points).x + *(dists+1) * cos(A_B_C__),
+		.y = (*source_points).y + *(dists+1) * sin(A_B_C__)
+	};
+	*(points+1) = (Point){
+		.x = (*source_points).x + *(dists+1) * cos(-A_B_C__),
+		.y = (*source_points).y + *(dists+1) * sin(-A_B_C__)
+	};
+	*points_size = 2;
 }
+
+void points_multilat(Point* points, size_t* points_size, 
+	float* dists, Point* source_points, size_t input_size){
+
+	size_t size = (size_t) n_chose_k(size, 2);
+	Point** point_pairs[size];	
+	float* _dist = (float*) malloc(2 * sizeof(float));
+	Point* _source_points = (Point*) malloc(2 * sizeof(Point));
+
+	for (int i = 0; i < input_size; ++i){
+		*_dist = dists[i];
+		*_source_points = source_points[i];
+
+		for (int j = i+1; j< input_size; ++j){	
+			*(_dist+1) = dists[j];
+			*(_source_points+1) = source_points[j];
+
+			points_duolat(points+i+j-1, points_size, 
+				_dist, _source_points);
+		}
+	}
+
+	for (int i = 0; i < size; ++i){
+		for (int j = 0; j<2; j++){
+			points[i*2+j] = *point_pairs[i][j];
+		}
+	}
+	*points_size = size * 2;	
+}
+
+void points_find(Point* points, size_t* points_size, 
+	float* dists, Point* source_points, size_t input_size){
+
+	if (input_size == 1){
+		points_unilat(points, points_size, 
+			dists, source_points, CIRCLE_STEP);
+	}else if (input_size == 2){
+		points_duolat(points, points_size, 
+			dists, source_points);
+	}else{
+		points_multilat(points, points_size, 
+			dists, source_points, input_size);
+	}
+}	
 
 int main( ){
 	Point A = { .x = 1, .y = 1};
-	Point B = { .x = 0, .y = 0};
-	Point C = { .x = 1, .y = 0};
+	
+	Point points[2];
+	points[0] = (Point){ .x = 0, .y = 0};
+	points[1] = (Point){ .x = 1, .y = 0};
+	
+	float dists[2];
+	dists[0] = dist(A, points[1] );
+	dists[1] = dist(A, points[0]);
+	Point* p;
+	size_t* points_size;
+	points_find(p, points_size, dists, points, 2);
 
-	float a = dist(B, C);
-	float b = dist(C, A);
-	float c = dist(A, B);
-
-	printf("Triangle with points:\nA:(");
-	print_point(A);
-	printf("), B:(");
-	print_point(B);
-	printf("), C:(");
-	print_point(C);
-	printf(")\nsides:\na:%f, b:%f, c:%f\n",
-		a, b, c);
-	printf("-----------------\npoint A estimate:\n");
-	Point* A__ = point_trilat(b, c, B, C);
-	printf("A:(");
-	print_point(A_[0]);
-	print_point(A_[1]);
-	printf(")\n----------------\npoint B estimate:\n");
-	Point B_ = point_trilat(c, a, C, A);
-	printf("B:(");
-	print_point(B_);
-	printf(")\n-----------------\npoint C estimate:\n");
-	Point C_ = point_trilat(a, b, A, B);
-	printf("C:(");
-	print_point(C_);
-	printf(")\n");
-
+	for (int i = 0; i < *points_size; ++i){
+		printf("\nPoint %i:\n", i);	
+		print_point(*(p+i));
+	}
 	return 0;
 }
