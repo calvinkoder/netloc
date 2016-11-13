@@ -1,0 +1,4 @@
+netloc
+by Calvin Koder
+
+Multilateration program to locate a device. Uses EM waves to determine distances between the device and various stations. Each station has a known location. From this, multilateration is used to determine the location of the device. 
