@@ -4,7 +4,6 @@
 #include <string.h>
 #include <float.h>
 
-const float M_TAU = M_PI*2;
 const float CIRCLE_STEP = 0.1; 
 
 int nearly_equal(float a, float b, float epsilon){
@@ -30,7 +29,7 @@ unsigned int n_chose_k(unsigned int n, unsigned int k){
 typedef struct Point{float x; float y;} Point;
 
 void print_angle(float a){
-	printf("%f", a / M_TAU);
+	printf("%f", a / 2*M_PI);
 }
 
 void print_point(Point p){
@@ -52,7 +51,7 @@ float angle_opp(float a, float b, float c){
 float angle_offset(float a, Point C_){
 	float angle = acos(C_.x/a);
 	if ( !nearly_equal(a*sin(angle), C_.y, FLT_EPSILON) ){
-		angle += M_TAU / 4;
+		angle += M_PI / 2;
 	}
 	return angle;
 }
@@ -69,7 +68,7 @@ float angle_trilat(float b, float c, Point B, Point C){
 void points_unilat(Point* points, size_t* points_size, 
 	float* dist, Point* source, float step){
 
-	*points_size = M_TAU / step;	
+	*points_size = 2*M_PI / step;	
 	points = (Point*) malloc(*points_size * sizeof(Point));	
 	for ( int i = 0; i < *points_size; ++i){
 		*(points+i) = (Point){
